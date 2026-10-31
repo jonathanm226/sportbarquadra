@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sport Bar Quadra - Agendamento Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: { 500: '#10b981', 600: '#059669', 700: '#047857' } } } }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex items-center justify-center p-4 relative overflow-x-hidden">
+
+    <!-- NOTIFICAÇÕES TOAST -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none w-full max-w-sm px-4 sm:px-0"></div>
+
+    <div class="bg-slate-900 border border-emerald-500/30 rounded-3xl w-full max-w-3xl shadow-[0_0_30px_rgba(16,185,129,0.15)] p-6 sm:p-10 relative overflow-hidden my-6">
+        <!-- Detalhe superior -->
+        <div class="absolute top-0 left-0 w-full h-2.5 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-600"></div>
+        
+        <!-- CABEÇALHO COM LOGO PERSONALIZADA -->
+        <div class="text-center mb-8 flex flex-col items-center">
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-950 border-2 border-emerald-500/50 p-1.5 shadow-[0_0_20px_rgba(16,185,129,0.3)] mb-4 flex items-center justify-center overflow-hidden">
+                <!-- Substitua o src abaixo pelo link ou arquivo da logo do cliente -->
+                <img src="logo.png" alt="Sport Bar Fest Logo" class="w-full h-full object-cover rounded-full" onerror="this.src='https://placehold.co/120x120/022c22/10b981?text=SBF'">
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1">Sport Bar</h1>
+            <p class="text-emerald-400 font-medium text-sm">Quadra Society espaço Esportivo</p>
+            <p class="text-slate-400 text-xs mt-1">Selecione seu horário e garanta sua reserva de forma rápida!</p>
+        </div>
+
+        <form id="formReservaCliente" onsubmit="realizarAgendamento(event)" class="space-y-8">
+            
+            <!-- PASSO 1: DATA E HORA -->
+            <div class="bg-slate-950/60 p-6 rounded-2xl border border-slate-800 shadow-inner">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center font-bold text-lg border border-emerald-500/30">1</div>
+                    <div>
+                        <h2 class="text-lg font-bold text-white">Escolha a Data e Horário</h2>
+                        <p class="text-xs text-slate-400">Selecione o dia desejado para ver os horários livres</p>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Data do Agendamento</label>
+                    <input type="date" id="cliData" required onchange="renderizarGrade()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition cursor-pointer font-medium">
+                </div>
+
+                <!-- Legenda -->
+                <div class="flex flex-wrap items-center justify-between mb-4 gap-4">
+                    <div class="flex gap-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-900 border border-emerald-500/50"></span> Disponível</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-800 border border-slate-700"></span> Agendado</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-900/50 border border-slate-800 opacity-50"></span> Expirado</div>
+                    </div>
+                    <div class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 shadow-sm" id="displayPrecoBadge">
+                        R$ 120.00 / hora
+                    </div>
+                </div>
+
+                <!-- Grade de Horários -->
+                <input type="hidden" id="cliHora" required>
+                <div id="gridHorarios" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="col-span-full py-8 text-center text-slate-500 text-sm">
+                        Carregando horários disponíveis...
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASSO 2: DADOS DO CLIENTE E DURAÇÃO -->
+            <div class="bg-slate-950/60 p-6 rounded-2xl border border-slate-800 shadow-inner">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center font-bold text-lg border border-emerald-500/30">2</div>
+                    <div>
+                        <h2 class="text-lg font-bold text-white">Seus Dados e Duração</h2>
+                        <p class="text-xs text-slate-400">Preencha para concluir sua reserva</p>
+                    </div>
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Seu Nome Completo</label>
+                        <div class="relative">
+                            <i class="fa-regular fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" id="cliNome" required placeholder="Digite seu nome" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Telefone (WhatsApp)</label>
+                        <div class="relative">
+                            <i class="fa-brands fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="tel" id="cliTel" required placeholder="(31) 99999-9999" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Duração da Reserva</label>
+                    <div class="relative">
+                        <i class="fa-regular fa-clock absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        <select id="cliDuracao" required onchange="atualizarValores()" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition appearance-none cursor-pointer">
+                            <option value="1">1 Hora</option>
+                            <option value="1.5">1h 30min</option>
+                            <option value="2">2 Horas</option>
+                            <option value="3">3 Horas</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Resumo Dinâmico do Valor -->
+            <div class="bg-gradient-to-r from-emerald-950/40 to-slate-900 border border-emerald-500/30 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg">
+                <div class="text-left w-full space-y-1">
+                    <div class="text-xs text-slate-400">Horário Escolhido: <strong class="text-white" id="displayHoraEscolhida">--:--</strong></div>
+                    <div class="text-xs text-slate-400">Sinal para reservar (50%): <strong class="text-emerald-400 font-bold" id="displayValorSinal">R$ 0,00</strong></div>
+                    <div class="text-xs text-slate-400">Restante a pagar no local: <strong class="text-white" id="displayValorRestante">R$ 0,00</strong></div>
+                </div>
+                <div class="text-right w-full sm:w-auto border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-6">
+                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Valor Total</div>
+                    <div class="text-3xl font-black text-emerald-400" id="displayValorTotal">R$ 0,00</div>
+                </div>
+            </div>
+
+            <button type="submit" id="btnReservar" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition transform hover:scale-[1.01] flex items-center justify-center gap-3 text-base">
+                <i class="fa-brands fa-whatsapp text-2xl"></i> Confirmar Reserva e Enviar Comprovante PIX
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const NUMERO_WHATSAPP_EMPRESA = "5531972478571"; 
+        
+        const SUPABASE_URL = 'https://doecoosuqibzdsyadsyg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvZWNvb3N1cWliemRzeWFkc3lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjQwMDAsImV4cCI6MjEwNTUwMDAwMH0.M2-NrLZQv-DqTtsIp4DbFHzgTjUENCA5X1ZPdDlmhPQ';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let configGlobais = { preco_hora: 120.00, horario_inicio: "08:00", horario_fim: "23:00" };
+        let agendamentosDB = [];
+        let horaSelecionada = "";
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const hojeLocal = new Date();
+            const ano = hojeLocal.getFullYear();
+            const mes = String(hojeLocal.getMonth() + 1).padStart(2, '0');
+            const dia = String(hojeLocal.getDate()).padStart(2, '0');
+            const dataFmt = `${ano}-${mes}-${dia}`;
+            
+            document.getElementById('cliData').min = dataFmt;
+            document.getElementById('cliData').value = dataFmt;
+            
+            await carregarDadosDoBanco();
+            renderizarGrade();
+            atualizarValores();
+        });
+
+        function mostrarMensagem(texto, tipo = 'warning') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let corFundo = 'bg-amber-500/10 border-amber-500/30 text-amber-400';
+            let icone = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            
+            if (tipo === 'error') {
+                corFundo = 'bg-red-500/10 border-red-500/30 text-red-400';
+                icone = '<i class="fa-solid fa-circle-xmark"></i>';
+            } else if (tipo === 'success') {
+                corFundo = 'bg-emerald-600 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]';
+                icone = '<i class="fa-solid fa-circle-check"></i>';
+            }
+
+            toast.className = `flex items-center gap-4 px-5 py-4 rounded-2xl border backdrop-blur-md transform transition-all duration-500 translate-x-[120%] opacity-0 ${corFundo}`;
+            toast.innerHTML = `<div class="text-2xl">${icone}</div><div class="text-sm font-semibold leading-snug">${texto}</div>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-x-[120%]', 'opacity-0'), 50);
+
+            if (tipo !== 'success') {
+                setTimeout(() => {
+                    toast.classList.add('translate-x-[120%]', 'opacity-0');
+                    setTimeout(() => toast.remove(), 500);
+                }, 4000);
+            }
+        }
+
+        async function carregarDadosDoBanco() {
+            try {
+                const cfg = await supabaseClient.from('configuracoes').select('*').single();
+                if (cfg.data) {
+                    configGlobais = { ...configGlobais, ...cfg.data };
+                    document.getElementById('displayPrecoBadge').innerText = `R$ ${Number(configGlobais.preco_hora).toFixed(2)} / hora`;
+                }
+
+                // BUSCANDO DA NOVA TABELA SOLICITADA: sportbarquadra
+                const ag = await supabaseClient.from('sportbarquadra').select('*').neq('status', 'cancelado');
+                if (ag.data) agendamentosDB = ag.data;
+            } catch(e) { console.error(e); }
+        }
+
+        function verificarConflito(dataEscolhida, diaSemanaIndex, horaBloco) {
+            const horaBlocoInt = parseInt(horaBloco.split(':')[0]);
+
+            return agendamentosDB.find(a => {
+                const horaInicioInt = parseInt(a.hora_inicio.split(':')[0]);
+                const horaFimInt = a.hora_fim ? parseInt(a.hora_fim.split(':')[0]) : horaInicioInt + (Number(a.duracao) || 1);
+                
+                const isHoraOcupada = (horaBlocoInt >= horaInicioInt && horaBlocoInt < horaFimInt);
+                if (!isHoraOcupada) return false;
+
+                if (a.tipo === 'mensalista') {
+                    const diaInicioContrato = new Date(a.data + 'T12:00:00').getDay();
+                    return (diaInicioContrato === diaSemanaIndex) && (dataEscolhida >= a.data);
+                } else {
+                    return a.data === dataEscolhida;
+                }
+            });
+        }
+
+        function renderizarGrade() {
+            const dataSelecionada = document.getElementById('cliData').value;
+            const grid = document.getElementById('gridHorarios');
+            grid.innerHTML = '';
+            horaSelecionada = "";
+            document.getElementById('cliHora').value = "";
+            document.getElementById('displayHoraEscolhida').innerText = "--:--";
+
+            if (!dataSelecionada) return;
+
+            const inicio = parseInt((configGlobais.horario_inicio || "08:00").split(':')[0]);
+            const fim = parseInt((configGlobais.horario_fim || "23:00").split(':')[0]);
+
+            const dateObj = new Date(dataSelecionada + 'T12:00:00');
+            const diaSemana = dateObj.getDay();
+
+            const hoje = new Date();
+            const anoAtual = hoje.getFullYear();
+            const mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
+            const diaAtual = String(hoje.getDate()).padStart(2, '0');
+            const dataAtualFmt = `${anoAtual}-${mesAtual}-${diaAtual}`;
+            
+            const isHoje = dataSelecionada === dataAtualFmt;
+            const horaAtual = hoje.getHours();
+
+            for (let h = inicio; h < fim; h++) {
+                const horaStr = String(h).padStart(2, '0') + ':00';
+                const horaFimStr = String(h + 1).padStart(2, '0') + ':00';
+                
+                let estado = 'disponivel';
+                let classes = 'border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer transition';
+                let textoEstado = 'DISPONÍVEL';
+
+                if (isHoje && h <= horaAtual) {
+                    estado = 'expirado';
+                    classes = 'border-slate-800 bg-slate-900/40 text-slate-600 opacity-50 cursor-not-allowed';
+                    textoEstado = 'EXPIRADO';
+                } else if (verificarConflito(dataSelecionada, diaSemana, horaStr)) {
+                    estado = 'agendado';
+                    classes = 'border-slate-700 bg-slate-800/80 text-slate-500 cursor-not-allowed';
+                    textoEstado = 'OCUPADO';
+                }
+
+                const div = document.createElement('div');
+                div.className = `flex flex-col items-center justify-center p-3.5 rounded-xl border ${classes}`;
+                div.innerHTML = `
+                    <span class="font-bold mb-1 ${estado === 'agendado' ? 'text-slate-400' : (estado === 'expirado' ? 'line-through' : 'text-white')}">${horaStr} - ${horaFimStr}</span>
+                    <span class="text-[10px] font-bold tracking-widest">${textoEstado}</span>
+                `;
+
+                if (estado === 'disponivel') {
+                    div.onclick = () => selecionarHora(div, horaStr);
+                }
+
+                grid.appendChild(div);
+            }
+        }
+
+        function selecionarHora(elemento, hora) {
+            document.querySelectorAll('#gridHorarios > div').forEach(el => {
+                if (el.innerText.includes('DISPONÍVEL')) {
+                    el.className = 'flex flex-col items-center justify-center p-3.5 rounded-xl border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer transition';
+                }
+            });
+
+            elemento.className = 'flex flex-col items-center justify-center p-3.5 rounded-xl border border-emerald-500 bg-emerald-600 text-white cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.4)] transition transform scale-105';
+            
+            horaSelecionada = hora;
+            document.getElementById('cliHora').value = hora;
+            document.getElementById('displayHoraEscolhida').innerText = hora;
+        }
+
+        function atualizarValores() {
+            const horas = parseFloat(document.getElementById('cliDuracao').value);
+            const total = horas * Number(configGlobais.preco_hora);
+            const sinal = total * 0.5;
+            const restante = total - sinal;
+            
+            document.getElementById('displayValorTotal').innerText = `R$ ${total.toFixed(2)}`;
+            document.getElementById('displayValorSinal').innerText = `R$ ${sinal.toFixed(2)}`;
+            document.getElementById('displayValorRestante').innerText = `R$ ${restante.toFixed(2)}`;
+        }
+
+        function calcularHoraFim(horaInicio, duracaoStr) {
+            const [horas, minutos] = horaInicio.split(':').map(Number);
+            const duracaoHoras = parseFloat(duracaoStr);
+            let minutosTotais = (horas * 60) + minutos + (duracaoHoras * 60);
+            const fimHora = Math.floor(minutosTotais / 60) % 24;
+            const fimMin = minutosTotais % 60;
+            return `${String(fimHora).padStart(2, '0')}:${String(fimMin).padStart(2, '0')}`;
+        }
+
+        async function realizarAgendamento(e) {
+            e.preventDefault();
+            
+            if (!horaSelecionada) {
+                mostrarMensagem("Por favor, selecione um horário disponível na grade antes de prosseguir.", "warning");
+                return;
+            }
+
+            const btn = document.getElementById('btnReservar');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processando Reserva...`;
+            btn.disabled = true;
+
+            const nome = document.getElementById('cliNome').value;
+            const tel = document.getElementById('cliTel').value;
+            const data = document.getElementById('cliData').value;
+            const duracao = parseFloat(document.getElementById('cliDuracao').value);
+            
+            const horaFim = calcularHoraFim(horaSelecionada, duracao);
+            const valorTotal = Number(configGlobais.preco_hora) * duracao;
+            const sinal = valorTotal * 0.5;
+
+            const dataObj = new Date(data + 'T12:00:00');
+            const diaSem = dataObj.getDay();
+            const horaInit = parseInt(horaSelecionada.split(':')[0]);
+            
+            for (let i = 0; i < duracao; i++) {
+                const horaCheck = String(horaInit + i).padStart(2, '0') + ':00';
+                if (verificarConflito(data, diaSem, horaCheck)) {
+                    mostrarMensagem("Atenção! A duração selecionada sobrepõe um horário já ocupado. Escolha outro horário.", "warning");
+                    btn.innerHTML = `<i class="fa-brands fa-whatsapp text-2xl"></i> Confirmar Reserva e Enviar Comprovante PIX`;
+                    btn.disabled = false;
+                    return;
+                }
+            }
+
+            try {
+                // Inserindo na nova tabela sportbarquadra
+                const { error } = await supabaseClient.from('sportbarquadra').insert([{
+                    nome_cliente: nome, 
+                    telefone_cliente: tel, 
+                    data: data,
+                    hora_inicio: horaSelecionada, 
+                    hora_fim: horaFim,
+                    duracao: duracao,
+                    valor: valorTotal, 
+                    sinal_pago: sinal,
+                    status: 'confirmado',
+                    tipo: 'avulso'
+                }]);
+
+                if (error) throw error; 
+
+                mostrarMensagem("Reserva realizada com sucesso! Redirecionando para o WhatsApp...", "success");
+
+                setTimeout(() => {
+                    const dataFmt = data.split('-').reverse().join('/');
+                    const msg = `⚽ *RESERVA SPORT BAR FEST*\n\n👤 *Nome:* ${nome}\n📅 *Data:* ${dataFmt}\n⏰ *Horário:* ${horaSelecionada} às ${horaFim}\n\n💰 *Valor Total:* R$ ${valorTotal.toFixed(2)}\n💸 *Sinal (50%):* R$ ${sinal.toFixed(2)}\n\nSegue em anexo o comprovante do PIX para validação!`;
+                    
+                    window.open(`https://api.whatsapp.com/send?phone=${NUMERO_WHATSAPP_EMPRESA}&text=${encodeURIComponent(msg)}`, '_self');
+                }, 2000);
+
+            } catch (err) {
+                mostrarMensagem("Erro de comunicação com o servidor. Tente novamente.", "error");
+                console.error("Erro Supabase:", err);
+                btn.innerHTML = `<i class="fa-brands fa-whatsapp text-2xl"></i> Confirmar Reserva e Enviar Comprovante PIX`;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
