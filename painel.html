@@ -202,10 +202,11 @@
                             <button onclick="voltarParaHoje()" class="ml-2 text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg hover:bg-emerald-500/30 transition">Hoje</button>
                         </div>
                     </div>
-                    <div class="flex gap-4 mb-4 text-[11px] uppercase font-bold tracking-wider text-slate-400">
+                    <div class="flex flex-wrap gap-4 mb-4 text-[11px] uppercase font-bold tracking-wider text-slate-400">
                         <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-900 border border-slate-800"></span> Livre</div>
                         <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500/20 border border-emerald-500/50"></span> Avulso</div>
                         <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-500/20 border border-indigo-500/50"></span> Mensalista</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-red-500/20 border border-red-500/50"></span> Bloqueado</div>
                     </div>
                     <div class="overflow-x-auto grade-scroll pb-4">
                         <div class="min-w-[800px]">
@@ -368,7 +369,6 @@
             document.getElementById('cfgHorarioFim').value = config.horario_fim || '23:00';
 
             try {
-                // BUSCANDO DA NOVA TABELA sportbarquadra
                 const agDb = await supabaseClient.from('sportbarquadra').select('*');
                 if (agDb.data) globaisAgendamentos = agDb.data;
             } catch(e) {}
@@ -450,22 +450,39 @@
 
                     if (agendamento) {
                         const isMensalista = agendamento.tipo === 'mensalista';
-                        const corBg = isMensalista ? 'bg-indigo-500/20 hover:bg-indigo-500/30 border-indigo-500/50' : 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50';
-                        const corTxt = isMensalista ? 'text-indigo-400' : 'text-emerald-400';
-                        
-                        corpoHTML += `
-                            <div class="p-2 rounded-lg border ${corBg} flex flex-col justify-center cursor-pointer transition shadow-sm" 
-                                 onclick="enviarLembrete('${agendamento.telefone_cliente}', '${agendamento.nome_cliente}')"
-                                 title="Cliente: ${agendamento.nome_cliente} | WhatsApp: ${agendamento.telefone_cliente}">
-                                <span class="text-xs font-bold text-white truncate w-full">${agendamento.nome_cliente}</span>
-                                <span class="text-[10px] font-semibold ${corTxt} uppercase mt-0.5">${agendamento.tipo}</span>
-                            </div>
-                        `;
+                        const isBloqueado = agendamento.tipo === 'bloqueado' || agendamento.status === 'bloqueado';
+
+                        if (isBloqueado) {
+                            corpoHTML += `
+                                <div class="p-2 rounded-lg border bg-red-500/20 hover:bg-red-500/30 border-red-500/50 flex flex-col items-center justify-center cursor-pointer transition shadow-sm" 
+                                     onclick="desbloquearHorario('${agendamento.id}')"
+                                     title="Horário Bloqueado (Clique para desbloquear)">
+                                    <span class="text-xs font-bold text-red-400 truncate w-full text-center"><i class="fa-solid fa-lock mr-1"></i>Bloqueado</span>
+                                    <span class="text-[9px] font-semibold text-red-300/70 uppercase mt-0.5">Desbloquear</span>
+                                </div>
+                            `;
+                        } else {
+                            const corBg = isMensalista ? 'bg-indigo-500/20 hover:bg-indigo-500/30 border-indigo-500/50' : 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50';
+                            const corTxt = isMensalista ? 'text-indigo-400' : 'text-emerald-400';
+                            
+                            corpoHTML += `
+                                <div class="p-2 rounded-lg border ${corBg} flex flex-col justify-center cursor-pointer transition shadow-sm" 
+                                     onclick="enviarLembrete('${agendamento.telefone_cliente}', '${agendamento.nome_cliente}')"
+                                     title="Cliente: ${agendamento.nome_cliente} | WhatsApp: ${agendamento.telefone_cliente}">
+                                    <span class="text-xs font-bold text-white truncate w-full">${agendamento.nome_cliente}</span>
+                                    <span class="text-[10px] font-semibold ${corTxt} uppercase mt-0.5">${agendamento.tipo}</span>
+                                </div>
+                            `;
+                        }
                     } else {
                         corpoHTML += `
-                            <div class="p-2 rounded-lg border border-slate-800/80 bg-slate-900/40 hover:bg-slate-800 flex items-center justify-center cursor-pointer transition group"
-                                 onclick="prepararModalAgendamento('avulso', '${dataISO}', '${horaString}')">
-                                <span class="text-xs text-slate-600 font-bold group-hover:text-emerald-500 transition"><i class="fa-solid fa-plus"></i> Reservar</span>
+                            <div class="p-1.5 rounded-lg border border-slate-800/80 bg-slate-900/40 flex flex-col items-center justify-center gap-1 transition">
+                                <button onclick="prepararModalAgendamento('avulso', '${dataISO}', '${horaString}')" class="text-[11px] text-slate-400 font-bold hover:text-emerald-400 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-plus text-[9px]"></i> Reservar
+                                </button>
+                                <button onclick="bloquearHorarioDirecto('${dataISO}', '${horaString}')" class="text-[10px] text-slate-500 font-semibold hover:text-red-400 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-lock text-[8px]"></i> Bloquear
+                                </button>
                             </div>
                         `;
                     }
@@ -496,6 +513,44 @@
                     return a.data === dataBuscaISO;
                 }
             });
+        }
+
+        async function bloquearHorarioDirecto(dataISO, horaString) {
+            const dataFmt = dataISO.split('-').reverse().join('/');
+            if (confirm(`Deseja bloquear o horário das ${horaString} no dia ${dataFmt}? Ele ficará indisponível para reservas no site.`)) {
+                try {
+                    const horaFim = calcularHoraFim(horaString, "1");
+                    const { error } = await supabaseClient.from('sportbarquadra').insert([{
+                        nome_cliente: 'BLOQUEADO',
+                        telefone_cliente: '-',
+                        data: dataISO,
+                        hora_inicio: horaString,
+                        hora_fim: horaFim,
+                        valor: 0,
+                        sinal_pago: 0,
+                        status: 'confirmado',
+                        tipo: 'bloqueado',
+                        duracao: 1
+                    }]);
+
+                    if (error) throw error;
+                    await carregarDadosBase();
+                } catch(err) {
+                    alert("Erro ao bloquear horário: " + err.message);
+                }
+            }
+        }
+
+        async function desbloquearHorario(id) {
+            if (confirm("Deseja desbloquear este horário e liberá-lo para novas reservas?")) {
+                try {
+                    const { error } = await supabaseClient.from('sportbarquadra').delete().eq('id', id);
+                    if (error) throw error;
+                    await carregarDadosBase();
+                } catch(err) {
+                    alert("Erro ao desbloquear horário: " + err.message);
+                }
+            }
         }
 
         function prepararModalAgendamento(tipo, defaultData = '', defaultHora = '') {
@@ -546,7 +601,6 @@
             if (tipo === 'mensalista') valor = valor * 4;
 
             try {
-                // Inserindo na nova tabela sportbarquadra
                 await supabaseClient.from('sportbarquadra').insert([{
                     nome_cliente: nome, telefone_cliente: tel, data: data,
                     hora_inicio: hora, hora_fim: horaFim, valor: valor, 
@@ -570,8 +624,9 @@
 
             globaisAgendamentos.forEach(a => {
                 const isCancelado = a.status === 'cancelado';
+                const isBloqueado = a.tipo === 'bloqueado' || a.status === 'bloqueado';
 
-                if (!isCancelado) {
+                if (!isCancelado && !isBloqueado) {
                     const val = Number(a.valor || 0);
                     const sinal = Number(a.sinal_pago || 0);
                     
@@ -588,7 +643,7 @@
                     }
                 }
 
-                if (tbodyClientes) {
+                if (tbodyClientes && !isBloqueado) {
                     const isMensalista = a.tipo === 'mensalista';
                     const badgeTipo = isMensalista 
                         ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Mensalista</span>' 
@@ -651,7 +706,6 @@
         async function cancelarContratoOuAgendamento(id) {
             if (confirm("Tem certeza que deseja cancelar este agendamento ou contrato?")) {
                 try {
-                    // Atualiza na nova tabela sportbarquadra
                     const { error } = await supabaseClient
                         .from('sportbarquadra')
                         .update({ status: 'cancelado' })
