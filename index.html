@@ -202,10 +202,17 @@
             } catch(e) { console.error(e); }
         }
 
+        function extrairDiaSemana(dataISO) {
+            if (!dataISO) return -1;
+            return new Date(dataISO + 'T12:00:00').getDay();
+        }
+
         function verificarConflito(dataEscolhida, diaSemanaIndex, horaBloco) {
             const horaBlocoInt = parseInt(horaBloco.split(':')[0]);
 
             return agendamentosDB.find(a => {
+                if (a.status === 'cancelado') return false;
+
                 const horaInicioInt = parseInt(a.hora_inicio.split(':')[0]);
                 const horaFimInt = a.hora_fim ? parseInt(a.hora_fim.split(':')[0]) : horaInicioInt + (Number(a.duracao) || 1);
                 
@@ -213,7 +220,8 @@
                 if (!isHoraOcupada) return false;
 
                 if (a.tipo === 'mensalista') {
-                    const diaInicioContrato = new Date(a.data + 'T12:00:00').getDay();
+                    if (!a.data) return false;
+                    const diaInicioContrato = extrairDiaSemana(a.data);
                     return (diaInicioContrato === diaSemanaIndex) && (dataEscolhida >= a.data);
                 } else {
                     return a.data === dataEscolhida;
@@ -234,8 +242,7 @@
             const inicio = parseInt((configGlobais.horario_inicio || "08:00").split(':')[0]);
             const fim = parseInt((configGlobais.horario_fim || "23:00").split(':')[0]);
 
-            const dateObj = new Date(dataSelecionada + 'T12:00:00');
-            const diaSemana = dateObj.getDay();
+            const diaSemana = extrairDiaSemana(dataSelecionada);
 
             const hoje = new Date();
             const anoAtual = hoje.getFullYear();
@@ -334,8 +341,7 @@
             const valorTotal = Number(configGlobais.preco_hora) * duracao;
             const sinal = valorTotal * 0.5;
 
-            const dataObj = new Date(data + 'T12:00:00');
-            const diaSem = dataObj.getDay();
+            const diaSem = extrairDiaSemana(data);
             const horaInit = parseInt(horaSelecionada.split(':')[0]);
             
             for (let i = 0; i < duracao; i++) {
