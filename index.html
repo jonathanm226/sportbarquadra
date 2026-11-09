@@ -26,7 +26,6 @@
         <!-- CABEÇALHO COM LOGO PERSONALIZADA -->
         <div class="text-center mb-8 flex flex-col items-center">
             <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-slate-950 border-2 border-emerald-500/50 p-1.5 shadow-[0_0_20px_rgba(16,185,129,0.3)] mb-4 flex items-center justify-center overflow-hidden">
-                <!-- Substitua o src abaixo pelo link ou arquivo da logo do cliente -->
                 <img src="logo.png" alt="Sport Bar Fest Logo" class="w-full h-full object-cover rounded-full" onerror="this.src='https://placehold.co/120x120/022c22/10b981?text=SBF'">
             </div>
             <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1">Sport Bar</h1>
@@ -46,9 +45,11 @@
                     </div>
                 </div>
 
-                <div class="mb-6">
-                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Data do Agendamento</label>
-                    <input type="date" id="cliData" required onchange="renderizarGrade()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition cursor-pointer font-medium">
+                <!-- CAMPO DE DATA CENTRALIZADO E FIXADO -->
+                <div class="mb-6 flex flex-col items-center">
+                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 w-full text-left">Data do Agendamento</label>
+                    <input type="date" id="cliData" required onchange="renderizarGrade()" 
+                           class="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-center font-medium focus:outline-none focus:border-emerald-500 transition cursor-pointer shadow-inner">
                 </div>
 
                 <!-- Legenda -->
@@ -196,7 +197,6 @@
                     document.getElementById('displayPrecoBadge').innerText = `R$ ${Number(configGlobais.preco_hora).toFixed(2)} / hora`;
                 }
 
-                // BUSCANDO DA NOVA TABELA SOLICITADA: sportbarquadra
                 const ag = await supabaseClient.from('sportbarquadra').select('*').neq('status', 'cancelado');
                 if (ag.data) agendamentosDB = ag.data;
             } catch(e) { console.error(e); }
@@ -349,7 +349,6 @@
             }
 
             try {
-                // Inserindo na nova tabela sportbarquadra
                 const { error } = await supabaseClient.from('sportbarquadra').insert([{
                     nome_cliente: nome, 
                     telefone_cliente: tel, 
