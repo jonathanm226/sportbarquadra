@@ -316,7 +316,7 @@
             id: 1, 
             nome: "Sport Bar Fest", 
             preco_hora: 120.00, 
-            horario_inicio: "08:00", 
+            horario_inicio: "13:00", 
             horario_fim: "23:00", 
             whatsapp: "5531972478571",
             chave_pix: "",
@@ -365,7 +365,9 @@
             document.getElementById('cfgChavePix').value = config.chave_pix || '';
             document.getElementById('cfgTitularPix').value = config.titular_pix || '';
             document.getElementById('cfgPrecoHora').value = config.preco_hora || 120;
-            document.getElementById('cfgHorarioInicio').value = config.horario_inicio || '08:00';
+            
+            // Reflete o 13:00 caso não haja config salva
+            document.getElementById('cfgHorarioInicio').value = config.horario_inicio || '13:00';
             document.getElementById('cfgHorarioFim').value = config.horario_fim || '23:00';
 
             try {
@@ -393,7 +395,6 @@
 
         function extrairDiaSemana(dataISO) {
             if (!dataISO) return -1;
-            // Força horário local T12:00:00 para evitar desalinhamento de fuso horário UTC
             return new Date(dataISO + 'T12:00:00').getDay();
         }
 
@@ -439,7 +440,9 @@
             cabecalho.innerHTML = cabecalhoHTML;
 
             const corpo = document.getElementById('gridCorpo');
-            const hInicio = parseInt((config.horario_inicio || "08:00").split(':')[0]);
+            
+            // Força início às 13:00 caso tentem configurar abaixo disso
+            const hInicio = Math.max(13, parseInt((config.horario_inicio || "13:00").split(':')[0]));
             const hFim = parseInt((config.horario_fim || "23:00").split(':')[0]);
             let corpoHTML = '';
 
@@ -513,7 +516,6 @@
                 if (a.tipo === 'mensalista') {
                     if (!a.data) return false;
                     const diaSemanaMensalista = extrairDiaSemana(a.data);
-                    // O mensalista se repete 1x por semana no mesmo dia a partir da data de inicio
                     return (diaSemanaMensalista === diaSemanaIndexBusca) && (dataBuscaISO >= a.data);
                 } else {
                     return a.data === dataBuscaISO;
