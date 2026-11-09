@@ -141,7 +141,7 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvZWNvb3N1cWliemRzeWFkc3lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjQwMDAsImV4cCI6MjEwNTUwMDAwMH0.M2-NrLZQv-DqTtsIp4DbFHzgTjUENCA5X1ZPdDlmhPQ';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let configGlobais = { preco_hora: 120.00, horario_inicio: "08:00", horario_fim: "23:00" };
+        let configGlobais = { preco_hora: 120.00, horario_inicio: "13:00", horario_fim: "23:00" };
         let agendamentosDB = [];
         let horaSelecionada = "";
 
@@ -239,7 +239,8 @@
 
             if (!dataSelecionada) return;
 
-            const inicio = parseInt((configGlobais.horario_inicio || "08:00").split(':')[0]);
+            // Bloqueio rigoroso: nunca permite menor que 13h no quadro do cliente
+            const inicio = Math.max(13, parseInt((configGlobais.horario_inicio || "13:00").split(':')[0]));
             const fim = parseInt((configGlobais.horario_fim || "23:00").split(':')[0]);
 
             const diaSemana = extrairDiaSemana(dataSelecionada);
