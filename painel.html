@@ -38,7 +38,7 @@
                 </div>
                 
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1 font-bold uppercase">Telefone *</label>
+                    <label id="labelTelefone" for="modalTel" class="block text-xs text-slate-400 mb-1 font-bold uppercase">Telefone *</label>
                     <input type="tel" id="modalTel" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
@@ -66,6 +66,27 @@
                 <div class="pt-4 border-t border-slate-800 flex justify-end gap-3">
                     <button type="button" onclick="fecharModal()" class="px-4 py-2 rounded-xl text-slate-300 hover:bg-slate-800 transition">Cancelar</button>
                     <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl shadow transition">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalEditarTelefone" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
+            <button type="button" onclick="fecharModalEditarTelefone()" class="absolute top-4 right-4 text-slate-400 hover:text-white" aria-label="Fechar">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-xl font-bold text-indigo-400 mb-2 border-b border-slate-800 pb-3">Telefone do mensalista</h3>
+            <p id="editarTelefoneNome" class="text-sm text-slate-400 mb-5"></p>
+            <form onsubmit="salvarTelefoneMensalista(event)" class="space-y-4">
+                <input type="hidden" id="editarTelefoneId">
+                <div>
+                    <label for="editarTelefoneValor" class="block text-xs text-slate-400 mb-1 font-bold uppercase">Telefone / WhatsApp *</label>
+                    <input type="tel" id="editarTelefoneValor" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="pt-4 border-t border-slate-800 flex justify-end gap-3">
+                    <button type="button" onclick="fecharModalEditarTelefone()" class="px-4 py-2 rounded-xl text-slate-300 hover:bg-slate-800 transition">Cancelar</button>
+                    <button id="salvarTelefoneBtn" type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl shadow transition">Salvar telefone</button>
                 </div>
             </form>
         </div>
@@ -474,10 +495,13 @@
                             const corBg = isMensalista ? 'bg-indigo-500/20 hover:bg-indigo-500/30 border-indigo-500/50' : 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50';
                             const corTxt = isMensalista ? 'text-indigo-400' : 'text-emerald-400';
                             
+                            const acaoTelefone = agendamento.telefone_cliente
+                                ? `onclick="enviarLembrete('${agendamento.telefone_cliente}', '${agendamento.nome_cliente}')"`
+                                : '';
                             corpoHTML += `
-                                <div class="p-2 rounded-lg border ${corBg} flex flex-col justify-center cursor-pointer transition shadow-sm" 
-                                     onclick="enviarLembrete('${agendamento.telefone_cliente}', '${agendamento.nome_cliente}')"
-                                     title="Cliente: ${agendamento.nome_cliente} | WhatsApp: ${agendamento.telefone_cliente}">
+                                <div class="p-2 rounded-lg border ${corBg} flex flex-col justify-center ${agendamento.telefone_cliente ? 'cursor-pointer' : ''} transition shadow-sm" 
+                                     ${acaoTelefone}
+                                     title="Cliente: ${agendamento.nome_cliente}${agendamento.telefone_cliente ? ` | WhatsApp: ${agendamento.telefone_cliente}` : ''}">
                                     <span class="text-xs font-bold text-white truncate w-full">${agendamento.nome_cliente}</span>
                                     <span class="text-[10px] font-semibold ${corTxt} uppercase mt-0.5">${agendamento.tipo}</span>
                                 </div>
@@ -574,16 +598,57 @@
                 titulo.innerText = 'Cadastrar Mensalista (Fixo)';
                 titulo.className = 'text-xl font-bold text-indigo-400 mb-6 border-b border-slate-800 pb-3';
                 labelData.innerText = 'Data de Início (Define o dia da semana) *';
+                document.getElementById('modalTel').required = false;
+                document.getElementById('labelTelefone').innerText = 'Telefone (opcional)';
             } else {
                 titulo.innerText = 'Novo Agendamento Avulso';
                 titulo.className = 'text-xl font-bold text-emerald-400 mb-6 border-b border-slate-800 pb-3';
                 labelData.innerText = 'Data do Evento *';
+                document.getElementById('modalTel').required = true;
+                document.getElementById('labelTelefone').innerText = 'Telefone *';
             }
             document.getElementById('modalCadastro').classList.remove('hidden');
         }
 
         function fecharModal() {
             document.getElementById('modalCadastro').classList.add('hidden');
+        }
+
+        function abrirModalEditarTelefone(id, nome, telefone) {
+            document.getElementById('editarTelefoneId').value = id;
+            document.getElementById('editarTelefoneNome').textContent = nome || 'Mensalista';
+            document.getElementById('editarTelefoneValor').value = telefone || '';
+            document.getElementById('modalEditarTelefone').classList.remove('hidden');
+            document.getElementById('editarTelefoneValor').focus();
+        }
+
+        function fecharModalEditarTelefone() {
+            document.getElementById('modalEditarTelefone').classList.add('hidden');
+        }
+
+        async function salvarTelefoneMensalista(event) {
+            event.preventDefault();
+            const id = document.getElementById('editarTelefoneId').value;
+            const telefone = document.getElementById('editarTelefoneValor').value.trim();
+            const button = document.getElementById('salvarTelefoneBtn');
+            button.disabled = true;
+            button.textContent = 'Salvando...';
+
+            try {
+                const { error } = await supabaseClient
+                    .from('sportbarquadra')
+                    .update({ telefone_cliente: telefone })
+                    .eq('id', id);
+                if (error) throw error;
+
+                fecharModalEditarTelefone();
+                await carregarDadosBase();
+            } catch (error) {
+                alert('Erro ao atualizar o telefone: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Salvar telefone';
+            }
         }
 
         function calcularHoraFim(horaInicio, duracaoStr) {
@@ -611,7 +676,7 @@
             try {
                 const { error } = await supabaseClient.from('sportbarquadra').insert([{
                     nome_cliente: nome, 
-                    telefone_cliente: tel, 
+                    telefone_cliente: tel.trim(), 
                     data: data,
                     hora_inicio: hora, 
                     hora_fim: horaFim, 
@@ -638,7 +703,7 @@
             const tbodyClientes = document.getElementById('corpoTabelaClientes');
             if(tbodyClientes) tbodyClientes.innerHTML = '';
 
-            globaisAgendamentos.forEach(a => {
+            globaisAgendamentos.forEach((a, index) => {
                 const isCancelado = a.status === 'cancelado';
                 const isBloqueado = a.tipo === 'bloqueado' || a.status === 'bloqueado';
 
@@ -690,18 +755,32 @@
                                 ${a.nome_cliente || 'Cliente'}
                                 ${infoDetalhe}
                             </td>
-                            <td class="py-3 px-4 text-slate-300">${a.telefone_cliente || '-'}</td>
+                            <td class="py-3 px-4 text-slate-300">
+                                ${a.telefone_cliente || '-'}
+                                ${isMensalista ? `<button type="button" data-editar-telefone="${index}" class="ml-2 text-xs text-indigo-300 hover:text-indigo-200 underline">${a.telefone_cliente ? 'Editar' : 'Adicionar telefone'}</button>` : ''}
+                            </td>
                             <td class="py-3 px-4">${badgeTipo}</td>
                             <td class="py-3 px-4">${badgeStatus}</td>
                             <td class="py-3 px-4 text-right space-x-2">
-                                <button onclick="enviarLembrete('${a.telefone_cliente}', '${a.nome_cliente}')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition" title="Conversar no WhatsApp">
-                                    <i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i> Falar
-                                </button>
+                                ${a.telefone_cliente ? `<button onclick="enviarLembrete('${a.telefone_cliente}', '${a.nome_cliente}')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition" title="Conversar no WhatsApp"><i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i> Falar</button>` : ''}
                                 ${botaoAcao}
                             </td>
                         </tr>`;
                 }
             });
+
+            if (tbodyClientes) {
+                tbodyClientes.querySelectorAll('[data-editar-telefone]').forEach(button => {
+                    const agendamento = globaisAgendamentos[Number(button.dataset.editarTelefone)];
+                    if (agendamento) {
+                        button.addEventListener('click', () => abrirModalEditarTelefone(
+                            agendamento.id || agendamento._id,
+                            agendamento.nome_cliente,
+                            agendamento.telefone_cliente
+                        ));
+                    }
+                });
+            }
 
             if (tbodyClientes && tbodyClientes.innerHTML === '') {
                 tbodyClientes.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-500">Nenhum cliente cadastrado.</td></tr>`;
